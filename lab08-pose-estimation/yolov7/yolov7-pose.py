@@ -5,111 +5,162 @@ import numpy as np
 from torchvision import transforms
 
 from utils.datasets import letterbox
-from utils.general  import non_max_suppression_kpt
-from utils.plots    import output_to_keypoint, plot_skeleton_kpts
+from utils.general import non_max_suppression_kpt
+from utils.plots import output_to_keypoint, plot_skeleton_kpts
 
 
 def pose_video(frame):
-    mapped_img = frame.copy()
-    # Letterbox resizing.
     img = letterbox(frame, input_size, stride=64, auto=True)[0]
-    print(img.shape)
-    img_ = img.copy()
-    # Convert the array to 4D.
+
     img = transforms.ToTensor()(img)
-    # Convert the array to Tensor.
     img = torch.tensor(np.array([img.numpy()]))
-    # Load the image into the computation device.
     img = img.to(device)
-    
-    # Gradients are stored during training, not required while inference.
+
     with torch.no_grad():
         t1 = time.time()
         output, _ = model(img)
         t2 = time.time()
-        fps = 1/(t2 - t1)
-        output = non_max_suppression_kpt(output, 
-                                         0.25,    # Conf. Threshold.
-                                         0.65,    # IoU Threshold.
-                                         nc=1,   # Number of classes.
-                                         nkpt=17, # Number of keypoints.
-                                         kpt_label=True)
-        
+
+        fps = 1 / (t2 - t1)
+
+        output = non_max_suppression_kpt(
+            output,
+            0.25,
+            0.65,
+            nc=1,
+            nkpt=17,
+            kpt_label=True
+        )
+
         output = output_to_keypoint(output)
 
-    # Change format [b, c, h, w] to [h, w, c] for displaying the image.
     nimg = img[0].permute(1, 2, 0) * 255
     nimg = nimg.cpu().numpy().astype(np.uint8)
     nimg = cv2.cvtColor(nimg, cv2.COLOR_RGB2BGR)
 
     for idx in range(output.shape[0]):
         plot_skeleton_kpts(nimg, output[idx, 7:].T, 3)
-        
+
     return nimg, fps
 
 
-#------------------------------------------------------------------------------#
-# Change forward pass input size.
+# ------------------------------------------------------------------
+# Settings
+# ------------------------------------------------------------------
+
 input_size = 256
 
-#---------------------------INITIALIZATIONS------------------------------------#
+videos = [
+    "skydiving",
+    "far-away"
+]
 
-# Select the device based on hardware configs.
+save_name = videos[0]
+file_name = save_name + ".mp4"
+vid_path = "../media/" + file_name
+
+
+# ------------------------------------------------------------------
+# Device
+# ------------------------------------------------------------------
+
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
 else:
     device = torch.device("cpu")
-print('Selected Device : ', device)
 
-# Load keypoint detection model.
-weights = torch.load('yolov7-w6-pose.pt', map_location=torch.device('cpu'), weights_only=False)
-model = weights['model']
-# Load the model in evaluation mode.
-_ = model.float().eval()
-# Load the model to computation device [cpu/gpu/tpu]
+print("Selected Device:", device)
+
+
+# ------------------------------------------------------------------
+# Load model
+# ------------------------------------------------------------------
+
+weights = torch.load(
+    "yolov7-w6-pose.pt",
+    map_location=device,
+    weights_only=False
+)
+
+model = weights["model"]
+model.float().eval()
 model.to(device)
 
-# Provide the list of paths to your chosen videos her
-videos = [
-        'skydiving',
-        'far-away']
 
-file_name = videos[0] + '.mp4'
-vid_path = '../media/' + file_name
+# ------------------------------------------------------------------
+# Load video
+# ------------------------------------------------------------------
 
 cap = cv2.VideoCapture(vid_path)
+
+if not cap.isOpened():
+    print("Cannot open video:", vid_path)
+    exit()
+
 fps = int(cap.get(cv2.CAP_PROP_FPS))
 ret, frame = cap.read()
+
+if not ret:
+    print("Cannot read video:", vid_path)
+    cap.release()
+    exit()
+
 h, w, _ = frame.shape
 
-# May need to change the w, h as letterbox function reshapes the image.
-#out = cv2.VideoWriter('./' + file_name + '_yolov7', 
-#                       cv2.VideoWriter_fourcc(*'mp4v'), 
-#                       fps, (w, h))
+out = cv2.VideoWriter(
+    f"{save_name}_yolov7.avi",
+    cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+    fps,
+    (w, h)
+)
 
-out = cv2.VideoWriter(f"{save_name}_yolo7.avi",cv2.VideoWriter_fourcc('M','J','P','G'), 10, w,h)
+# return to first frame
+cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-#-------------------------------------------------------------------------------#
 
+# ------------------------------------------------------------------
+# Run pose estimation
+# ------------------------------------------------------------------
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     while True:
         ret, frame = cap.read()
-        
+
         if not ret:
-            print('Unable to read frame. Exiting ..')
+            print("Unable to read frame. Exiting...")
             break
 
         img, fps_ = pose_video(frame)
 
-        cv2.putText(img, 'FPS : {:.2f}'.format(fps_), (200, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)
-        cv2.putText(img, 'YOLOv7', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)
+        cv2.putText(
+            img,
+            "FPS: {:.2f}".format(fps_),
+            (200, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA
+        )
 
-        cv2.imshow('Output', img[...,::-1])
-        out.write(img[...,::-1])
+        cv2.putText(
+            img,
+            "YOLOv7",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.imshow("Output", img)
+        out.write(img)
+
         key = cv2.waitKey(1)
-        if key == ord('q'):
-        	break
+
+        if key == ord("q"):
+            break
 
     cap.release()
     out.release()
