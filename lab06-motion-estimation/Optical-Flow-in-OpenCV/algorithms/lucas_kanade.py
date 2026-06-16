@@ -20,6 +20,10 @@ def lucas_kanade_method(video_path):
     p0 = cv2.goodFeaturesToTrack(old_gray, mask=None, **feature_params)
     # Create a mask image for drawing purposes
     mask = np.zeros_like(old_frame)
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (old_frame.shape[1], old_frame.shape[0]))
+    
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -45,12 +49,21 @@ def lucas_kanade_method(video_path):
             mask = cv2.line(mask, (a, b), (c, d), color[i].tolist(), 2)
             frame = cv2.circle(frame, (a, b), 5, color[i].tolist(), -1)
         img = cv2.add(frame, mask)
-        cv2.imshow("frame", img)
-        k = cv2.waitKey(25) & 0xFF
-        if k == 27:
-            break
-        if k == ord("c"):
-            mask = np.zeros_like(old_frame)
+        #cv2.imshow("frame", img)
+
+        out.write(img)
+
+        #k = cv2.waitKey(25) & 0xFF
+        #if k == 27:
+        #    break
+        #if k == ord("c"):
+        #    mask = np.zeros_like(old_frame)
+        
+
         # Now update the previous frame and previous points
         old_gray = frame_gray.copy()
         p0 = good_new.reshape(-1, 1, 2)
+
+    out.release()
+    cap.release()
+    cv2.destroyAllWindows()

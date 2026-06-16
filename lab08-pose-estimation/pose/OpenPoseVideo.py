@@ -46,7 +46,7 @@ elif args.device == "gpu":
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
     print("Using GPU device")
-
+"""
 while cv2.waitKey(1) < 0:
     t = time.time()
     hasFrame, frame = cap.read()
@@ -54,7 +54,21 @@ while cv2.waitKey(1) < 0:
     if not hasFrame:
         cv2.waitKey()
         break
+"""
+#i replaced the above with the bellow
+frame_count = 0
+max_frames = 100
 
+while True:
+    t = time.time()
+    hasFrame, frame = cap.read()
+
+    if not hasFrame:
+        print("Unable to read frame. Exiting ..")
+        break
+
+    frameCopy = np.copy(frame)
+#_________________________________ the below are the same
     frameWidth = frame.shape[1]
     frameHeight = frame.shape[0]
 
@@ -101,8 +115,21 @@ while cv2.waitKey(1) < 0:
     cv2.putText(frame, "time taken = {:.2f} sec".format(time.time() - t), (50, 50), cv2.FONT_HERSHEY_COMPLEX, .8, (255, 50, 0), 2, lineType=cv2.LINE_AA)
     # cv2.putText(frame, "OpenPose using OpenCV", (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 50, 0), 2, lineType=cv2.LINE_AA)
     # cv2.imshow('Output-Keypoints', frameCopy)
-    #cv2.imshow('Output-Skeleton', frame)
+    cv2.imshow('Output-Skeleton', frame)
+# I added these three lines
+    key = cv2.waitKey(1)
+    if key == ord('q'):
+        break
 
     vid_writer.write(frame)
+
+# I added also these 
+    frame_count += 1
+    print(f"Processed frame {frame_count}")
+
+    if frame_count >= max_frames:
+        print("Processed 100 frames. Exiting ..")
+        break
+#_______________________________
 
 vid_writer.release()

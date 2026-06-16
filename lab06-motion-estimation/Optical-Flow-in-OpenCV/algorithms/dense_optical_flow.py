@@ -16,6 +16,9 @@ def dense_optical_flow(method, video_path, params=[], to_gray=False):
     if to_gray:
         old_frame = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
 
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (old_frame.shape[1], old_frame.shape[0]))
+
     while True:
         # Read the next frame
         ret, new_frame = cap.read()
@@ -35,9 +38,16 @@ def dense_optical_flow(method, video_path, params=[], to_gray=False):
         hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
         # Convert HSV image into BGR for demo
         bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-        cv2.imshow("frame", frame_copy)
-        cv2.imshow("optical flow", bgr)
-        k = cv2.waitKey(25) & 0xFF
-        if k == 27:
-            break
+
+        out.write(bgr)
+
+        #cv2.imshow("frame", frame_copy)
+        #cv2.imshow("optical flow", bgr)
+        #k = cv2.waitKey(25) & 0xFF
+        #if k == 27:
+        #    break
         old_frame = new_frame
+
+    out.release()
+    cap.release()
+    cv2.destroyAllWindows()

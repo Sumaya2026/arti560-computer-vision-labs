@@ -1,0 +1,9 @@
+lab07-action-recognition/action_youtube_naudio/
+lab07-action-recognition/Youtube Videos/
+.DS_Store 
+dinov2_env/
+__pycache__/
+.ipynb_checkpoints/
+Depth-Anything/
+lab09-depth-estimation/Depth-Anything/
+*.caffemodel
